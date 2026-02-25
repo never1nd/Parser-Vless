@@ -28,7 +28,25 @@ class VlessKey(Base):
     discovery_date = Column(DateTime, default=datetime.utcnow)
 
 def init_db():
-    Base.metadata.create_all(bind=engine)
+    import os
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        if "malformed" in str(e).lower():
+            print(f"❌ Database corruption detected: {e}")
+            engine.dispose()
+            if os.path.exists(DB_PATH):
+                import shutil
+                shutil.move(DB_PATH, DB_PATH + ".corrupt")
+            # Recreate engine and try once more
+            global engine, SessionLocal
+            from sqlalchemy import create_engine
+            engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
+            SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+            Base.metadata.create_all(bind=engine)
+            print("✅ Created new database after corruption.")
+        else:
+            raise e
 
 def save_vless_keys_bulk(keys_list, security_type="none"):
     """
