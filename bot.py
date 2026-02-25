@@ -8,7 +8,7 @@ from config import BOT_TOKEN, OUTPUT_WORKING
 import os
 
 # Import our existing logic
-from main import async_main as run_parsing_pipeline
+from parser_engine import async_main as run_parsing_pipeline
 from filter_reality import filter_keys
 from verify_working import verify_working
 from modules.discovery import DiscoveryModule
