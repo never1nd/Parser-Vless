@@ -12,6 +12,46 @@ from main import async_main as run_parsing_pipeline
 from filter_reality import filter_keys
 from verify_working import verify_working
 from modules.discovery import DiscoveryModule
+import platform
+import zipfile
+import requests
+
+# URL for Xray-core releases
+XRAY_RELEASES = "https://github.com/XTLS/Xray-core/releases/latest/download/"
+
+async def ensure_xray_binary():
+    from config import XRAY_PATH
+    if os.path.exists(XRAY_PATH):
+        return
+
+    logger.info(f"{XRAY_PATH} not found. Attempting to download...")
+    
+    system = platform.system().lower()
+    arch = "64" # Assume 64-bit for servers
+    
+    if system == "windows":
+        filename = f"Xray-windows-{arch}.zip"
+    else:
+        filename = f"Xray-linux-{arch}.zip"
+        
+    url = XRAY_RELEASES + filename
+    
+    try:
+        response = requests.get(url, stream=True)
+        with open(filename, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        with zipfile.ZipFile(filename, 'r') as zip_ref:
+            zip_ref.extractall(".")
+        
+        if system != "windows":
+            os.chmod("xray", 0o755)
+            
+        os.remove(filename)
+        logger.info("Xray-core downloaded and extracted successfully.")
+    except Exception as e:
+        logger.error(f"Failed to download Xray-core: {e}")
 
 # Logging
 logging.basicConfig(level=logging.INFO)
@@ -73,6 +113,9 @@ async def cmd_get(message: Message):
         await message.answer("Файл с рабочими ключами еще не создан. Запустите /parsing")
 
 async def main():
+    # Ensure xray is present
+    await ensure_xray_binary()
+    
     # Setup Scheduler
     scheduler = AsyncIOScheduler()
     scheduler.add_job(scheduled_task, 'interval', hours=6)

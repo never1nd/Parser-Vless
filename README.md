@@ -51,11 +51,11 @@ python filter_reality.py
 ```bash
 pip install sqlalchemy aiogram apscheduler aiohttp pysocks telethon python-dotenv beautifulsoup4 requests
 ```
-2. Убедитесь, что `xray.exe` в корне папки.
-3. Запустите бота:
+2. Запустите бота:
 ```bash
 python bot.py
 ```
+*Бот автоматически скачает нужную версию Xray-core при первом запуске.*
 
 ### Возможности бота:
 - **Автоматика**: Каждые 6 часов бот сам парсит, фильтрует и проверяет ключи.

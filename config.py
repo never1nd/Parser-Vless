@@ -5,14 +5,18 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Telegram API (User Account for Telethon)
-API_ID = int(os.getenv("API_ID"))
+API_ID = int(os.getenv("API_ID")) if os.getenv("API_ID") else None
 API_HASH = os.getenv("API_HASH")
 
 # Telegram Bot API (Managed by aiogram)
-BOT_TOKEN = "8354519184:AAEUeVUqBxtQvcLkEGe0fAVM19Hy_3XD-A0"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Database
 DB_PATH = "vless_parser.db"
+
+# Xray Verification Settings
+import sys
+XRAY_PATH = "xray" if sys.platform != "win32" else "xray.exe"
 
 # Search Channels Configuration
 CHANNELS = {
@@ -84,8 +88,8 @@ CHANNELS = {
     }
 }
 
-# Xray Verification Settings
-XRAY_PATH = "xray.exe" # Path to your xray-core binary
+# Xray Verification Settings (Moved up)
+# XRAY_PATH defined above
 TEST_URL = "http://cp.cloudflare.com/generate_204"
 SOCKS_PORT = 10808
 VERIFICATION_TIMEOUT = 2
