@@ -144,9 +144,19 @@ async def main():
         except Exception as e:
             logger.error(f"Migration error: {e}")
 
-    # Ensure DB is initialized
+    # Ensure DB is initialized (with corruption recovery)
     from database import init_db
-    init_db()
+    try:
+        init_db()
+    except Exception as e:
+        if "malformed" in str(e).lower():
+            logger.error(f"❌ Database is MALFORMED: {e}")
+            bak_path = DB_PATH + ".malformed.bak"
+            os.rename(DB_PATH, bak_path)
+            logger.warning(f"Renamed corrupted DB to {bak_path}. Starting fresh...")
+            init_db() # Try again with clean file
+        else:
+            raise e
     
     # Ensure xray is present
     await ensure_xray_binary()

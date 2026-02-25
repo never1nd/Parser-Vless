@@ -16,7 +16,7 @@ DB_PATH = "vless_parser.db"
 
 # Xray Verification Settings
 import sys
-XRAY_PATH = "xray" if sys.platform != "win32" else "xray.exe"
+XRAY_PATH = "./xray" if sys.platform != "win32" else "xray.exe"
 
 # Search Channels Configuration
 CHANNELS = {
