@@ -25,6 +25,7 @@ XRAY_RELEASES = "https://github.com/XTLS/Xray-core/releases/latest/download/"
 
 async def ensure_xray_binary():
     from config import XRAY_PATH
+    import zipfile
     system = platform.system().lower()
     is_linux = system != "windows"
 
@@ -33,14 +34,42 @@ async def ensure_xray_binary():
         if is_linux:
             try:
                 os.chmod(XRAY_PATH, 0o755)
-                logger.info("✅ Set execute permission on xray binary.")
+                logger.info("✅ Execute permission set on xray binary.")
             except Exception as e:
                 logger.error(f"❌ Failed to set permissions: {e}")
         return
 
-    logger.error(f"❌ FATAL: Xray binary NOT found at: {XRAY_PATH}")
-    logger.error("Please upload the Linux Xray binary and its support files (geoip.dat, geosite.dat, etc.)")
-    logger.error("The bot will continue but verification stage will FAIL.")
+    logger.warning(f"⚠️ Xray binary not found at {XRAY_PATH}. Downloading now...")
+    
+    arch = "64"
+    if is_linux:
+        filename = f"Xray-linux-{arch}.zip"
+    else:
+        filename = f"Xray-windows-{arch}.zip"
+
+    url = f"https://github.com/XTLS/Xray-core/releases/latest/download/{filename}"
+    logger.info(f"Downloading Xray from: {url}")
+    
+    try:
+        r = requests.get(url, stream=True, timeout=120)
+        r.raise_for_status()
+        with open(filename, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+        logger.info("Download complete. Extracting...")
+
+        with zipfile.ZipFile(filename, "r") as z:
+            z.extractall(".")
+        os.remove(filename)
+
+        if is_linux and os.path.exists("xray"):
+            os.chmod("xray", 0o755)
+            logger.info("✅ Xray downloaded and ready.")
+        else:
+            logger.error("❌ xray binary not found after extraction!")
+    except Exception as e:
+        logger.error(f"❌ Failed to download Xray: {e}")
+        logger.error("Verification will be skipped.")
 
 # Initialize bot and dispatcher
 bot = Bot(token=BOT_TOKEN)
