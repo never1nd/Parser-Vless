@@ -75,6 +75,41 @@ async def ensure_xray_binary():
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
+@dp.message(Command("xray"))
+async def cmd_xray(message: Message):
+    from config import XRAY_PATH
+    import subprocess
+    
+    if not os.path.exists(XRAY_PATH):
+        await message.answer(f"❌ Xray НЕ найден по пути: `{XRAY_PATH}`\nБот скачает его при следующем запуске.", parse_mode="Markdown")
+        return
+    
+    # Check permissions
+    mode = oct(os.stat(XRAY_PATH).st_mode)[-3:]
+    
+    # Try running xray version
+    try:
+        result = subprocess.run(
+            [XRAY_PATH, "version"],
+            capture_output=True, text=True, timeout=5
+        )
+        version_out = (result.stdout or result.stderr).strip().split('\n')[0]
+        await message.answer(
+            f"✅ Xray найден и работает!\n"
+            f"📁 Путь: `{os.path.abspath(XRAY_PATH)}`\n"
+            f"🔐 Права: `{mode}`\n"
+            f"ℹ️ Версия: `{version_out}`",
+            parse_mode="Markdown"
+        )
+    except Exception as e:
+        await message.answer(
+            f"⚠️ Xray найден, но не запускается!\n"
+            f"📁 Путь: `{os.path.abspath(XRAY_PATH)}`\n"
+            f"🔐 Права: `{mode}`\n"
+            f"❌ Ошибка: `{e}`",
+            parse_mode="Markdown"
+        )
+
 async def scheduled_task():
     logger.info("Starting scheduled 6-hour task...")
     try:
