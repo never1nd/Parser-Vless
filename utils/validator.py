@@ -5,11 +5,21 @@ from urllib.parse import urlparse
 # Vless Regex Pattern
 VLESS_PATTERN = r"vless:\/\/[^\s\'\"]+"
 
+# Telegram Pattern (matches t.me/username and telegram.me/username)
+TELEGRAM_PATTERN = r"(?:https?:\/\/)?t(?:elegram)?\.me\/([a-zA-Z0-9_]{5,})"
+
 def extract_vless(text):
     """Extracts all vless links from text."""
     if not text:
         return []
     return re.findall(VLESS_PATTERN, text)
+
+def extract_telegram_links(text):
+    """Extracts telegram usernames/links from text."""
+    if not text:
+        return []
+    # Find all matches and return the usernames
+    return list(set(re.findall(TELEGRAM_PATTERN, text)))
 
 def validate_vless(vless_url):
     """

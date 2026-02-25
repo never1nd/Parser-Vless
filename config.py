@@ -49,9 +49,11 @@ CHANNELS = {
             "https://www.reddit.com/r/v2ray/",
             "https://vlesskey.com/",
             "https://listvpn.net/free-vless-v2ray-servers",
-            "https://maintracker.org",
-            "https://rutracker.net",
-            "https://rutoro.info/"
+            "https://rutracker.net/forum/viewforum.php?f=1649",
+            "https://rutracker.net/forum/viewforum.php?f=1958",
+            "https://rutracker.net/forum/viewforum.php?f=659",
+            "https://maintracker.org/forum/viewforum.php?f=1649",
+            "https://rutoro.info/lastnews"
         ]
     },
     "free": {
