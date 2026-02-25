@@ -18,7 +18,7 @@ async def run_pipeline(channel_name, resources):
     
     # 1. GitHub (Running sync code in executor)
     gh = GitHubParser()
-    gh_keys = await loop.run_in_executor(None, gh.parse_resources, resources.get('github', []))
+    gh_keys = await loop.run_in_executor(None, gh.parse_links, resources.get('github', []))
     all_keys.update(gh_keys)
     
     # 2. Telegram (Now using web-scraping to support 24/7 headless mode)
