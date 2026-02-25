@@ -7,13 +7,9 @@ from utils.scraper import logger
 def test_single_key(args):
     key, port = args
     tester = XrayTester()
-    # Temporarily override SOCKS_PORT for this test
-    import utils.xray_handler
-    original_port = utils.xray_handler.SOCKS_PORT
-    utils.xray_handler.SOCKS_PORT = port
     
     try:
-        success, info = tester.test_link(key)
+        success, info = tester.test_link(key, port=port)
         latency = None
         if success and "ms" in info:
             try:
@@ -21,8 +17,9 @@ def test_single_key(args):
             except:
                 pass
         return {"key": key, "success": success, "latency": latency}
-    finally:
-        utils.xray_handler.SOCKS_PORT = original_port
+    except Exception as e:
+        logger.error(f"Error testing key: {e}")
+        return {"key": key, "success": False, "latency": None}
 
 def update_db_results(results):
     """Updates the database with verification results."""
@@ -56,18 +53,29 @@ def verify_working():
 
     logger.info("--- Starting Deep Verification Stage (Reality Only) ---")
     
-    from config import OUTPUT_REALITY
-    input_files = [OUTPUT_REALITY]
-    all_keys = set()
+    # 1. Read keys from Database (Primary source)
+    from database import SessionLocal, VlessKey
+    from sqlalchemy import select
     
-    for file_path in input_files:
-        if os.path.exists(file_path):
-            with open(file_path, "r", encoding="utf-8") as f:
+    db = SessionLocal()
+    all_keys = set()
+    try:
+        # Load Reality keys from DB
+        stmt = select(VlessKey.raw_url).where(VlessKey.security == "reality")
+        all_keys = set(db.execute(stmt).scalars().all())
+    finally:
+        db.close()
+        
+    if not all_keys:
+        logger.warning("No Reality keys found in database. Checking text files as fallback...")
+        from config import OUTPUT_REALITY
+        if os.path.exists(OUTPUT_REALITY):
+            with open(OUTPUT_REALITY, "r", encoding="utf-8") as f:
                 all_keys.update([line.strip() for line in f if line.strip()])
 
     total = len(all_keys)
     if total == 0:
-        logger.warning("No keys found for verification.")
+        logger.warning("No Reality keys found for verification.")
         return
 
     logger.info(f"Loaded {total} unique keys for testing...")

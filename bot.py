@@ -104,8 +104,35 @@ async def cmd_start(message: Message):
         "⚡ Проверяю ключи на скорость\n\n"
         "Команды:\n"
         "/parsing - Запустить полный цикл проверки прямо сейчас\n"
+        "/ping - Проверить задержку существующих Reality ключей\n"
         "/get_working - Получить файл с рабочими Reality ключами"
     )
+
+@dp.message(Command("ping"))
+async def cmd_ping(message: Message):
+    await message.answer("⚡ Проверяю текущие Reality ключи на задержку...")
+    
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, verify_working)
+    
+    # Fetch top 10 working keys from DB
+    from database import SessionLocal, VlessKey
+    from sqlalchemy import select
+    
+    db = SessionLocal()
+    try:
+        stmt = select(VlessKey).where(VlessKey.is_working == True).order_by(VlessKey.latency.asc()).limit(10)
+        working = db.execute(stmt).scalars().all()
+    finally:
+        db.close()
+        
+    if working:
+        response = "✅ **Топ рабочих серверов:**\n\n"
+        for i, k in enumerate(working, 1):
+            response += f"{i}. ⚡ {k.latency}ms\n`{k.raw_url}`\n\n"
+        await message.answer(response, parse_mode="Markdown")
+    else:
+        await message.answer("❌ Рабочих ключей не найдено. Попробуйте /parsing для поиска новых.")
 
 @dp.message(Command("parsing"))
 async def cmd_parsing(message: Message):

@@ -3,14 +3,6 @@ import os
 import subprocess
 import time
 import requests
-from config import XRAY_PATH, SOCKS_PORT, TEST_URL, VERIFICATION_TIMEOUT
-from utils.scraper import logger
-
-import json
-import os
-import subprocess
-import time
-import requests
 from urllib.parse import urlparse, parse_qs, unquote
 from config import XRAY_PATH, SOCKS_PORT, TEST_URL, VERIFICATION_TIMEOUT
 from utils.scraper import logger
@@ -33,8 +25,9 @@ def parse_vless_url(url):
         uuid_part, address_part = netloc.split('@')
         
         if ':' in address_part:
-            host, port = address_part.split(':')
-            port = int(port)
+            host_port = address_part.split(':')
+            host = host_port[0]
+            port = int(host_port[1])
         else:
             host = address_part
             port = 443
@@ -121,12 +114,15 @@ def generate_xray_config(parsed_data, socks_port):
 class XrayTester:
     def __init__(self, binary_path=XRAY_PATH):
         self.binary_path = binary_path
-        self.process = None
 
     def is_binary_present(self):
         return os.path.exists(self.binary_path)
 
-    def test_link(self, vless_url):
+    def test_link(self, vless_url, port=SOCKS_PORT):
+        """
+        Tests a Vless link using Xray.
+        Port can be specified for parallel testing.
+        """
         if not self.is_binary_present():
             logger.warning("Xray binary not found at path: %s", self.binary_path)
             return False, "xray binary missing"
@@ -135,30 +131,31 @@ class XrayTester:
         if not data:
             return False, "Invalid URL"
         
-        short_url = vless_url[:60] + "..." if len(vless_url) > 60 else vless_url
-        logger.debug("Testing: %s @ %s:%s", data['address'], data['address'], data['port'])
+        logger.debug("Testing: %s @ %s:%s on SOCKS port %d", 
+                     data['address'], data['address'], data['port'], port)
             
-        config = generate_xray_config(data, SOCKS_PORT)
-        config_path = f"temp_config_{SOCKS_PORT}.json"
+        config = generate_xray_config(data, port)
+        config_path = f"temp_config_{port}.json"
         
         with open(config_path, "w") as f:
             json.dump(config, f)
             
+        process = None
         try:
             # Start Xray
-            self.process = subprocess.Popen(
+            process = subprocess.Popen(
                 [self.binary_path, "run", "-c", config_path],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
             
-            # Wait for Xray to start (increased for reliability)
-            time.sleep(3)
+            # Wait for Xray to start
+            time.sleep(2)
             
             # Test connection via SOCKS5 proxy
             proxies = {
-                "http": f"socks5h://127.0.0.1:{SOCKS_PORT}",
-                "https": f"socks5h://127.0.0.1:{SOCKS_PORT}"
+                "http": f"socks5h://127.0.0.1:{port}",
+                "https": f"socks5h://127.0.0.1:{port}"
             }
             
             start_time = time.time()
@@ -175,8 +172,14 @@ class XrayTester:
             logger.debug("❌ Error: %s:%s — %s", data['address'], data['port'], str(e))
             return False, str(e)
         finally:
-            if self.process:
-                self.process.terminate()
-                self.process.wait()
+            if process:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
             if os.path.exists(config_path):
-                os.remove(config_path)
+                try:
+                    os.remove(config_path)
+                except:
+                    pass
