@@ -58,8 +58,9 @@ async def async_main():
     from sqlalchemy import select
     
     # 0. Authorize Telegram
-    print("--- Telegram Authorization ---")
-    await tg_client.start()
+    from config import BOT_TOKEN
+    print("--- Telegram Authorization (as Bot) ---")
+    await tg_client.start(bot_token=BOT_TOKEN)
     
     # 1. Fetch sources from DB
     db = SessionLocal()
