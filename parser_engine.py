@@ -16,20 +16,26 @@ async def run_pipeline(channel_name, resources):
     all_keys = set()
     loop = asyncio.get_running_loop()
     
-    # 1. GitHub (Running sync code in executor)
+    # 1. GitHub
     gh = GitHubParser()
+    logger.info(f"--- {channel_name.upper()} Phase: GitHub Parsing ---")
     gh_keys = await loop.run_in_executor(None, gh.parse_links, resources.get('github', []))
     all_keys.update(gh_keys)
+    logger.info(f"GitHub phase found {len(gh_keys)} keys")
     
-    # 2. Telegram (Now using web-scraping to support 24/7 headless mode)
+    # 2. Telegram
     tg = TelegramParser()
+    logger.info(f"--- {channel_name.upper()} Phase: Telegram Parsing ---")
     tg_keys = await loop.run_in_executor(None, tg.parse_channels, resources.get('telegram', []))
     all_keys.update(tg_keys)
+    logger.info(f"Telegram phase found {len(tg_keys)} keys")
     
     # 3. Web
     web = WebParser()
+    logger.info(f"--- {channel_name.upper()} Phase: Web Parsing ---")
     web_keys = await loop.run_in_executor(None, web.parse_sites, resources.get('web', []))
     all_keys.update(web_keys)
+    logger.info(f"Web phase found {len(web_keys)} keys")
     
     # 4. Filter and Save
     valid_keys = []

@@ -8,11 +8,17 @@ VLESS_PATTERN = r"vless:\/\/[^\s\'\"]+"
 # Telegram Pattern (matches t.me/username and telegram.me/username)
 TELEGRAM_PATTERN = r"(?:https?:\/\/)?t(?:elegram)?\.me\/([a-zA-Z0-9_]{5,})"
 
+# Vless Regex Pattern - optimized to avoid trailing backticks/markdown
+VLESS_PATTERN = r"vless:\/\/[^ \s\'\"`]+"
+
 def extract_vless(text):
-    """Extracts all vless links from text."""
+    """Extracts all vless links from text and cleans them."""
     if not text:
         return []
-    return re.findall(VLESS_PATTERN, text)
+    raw_links = re.findall(VLESS_PATTERN, text)
+    # Final cleanup: trim any trailing punctuation that regex might have grabbed
+    clean_links = [link.strip("`.,() ") for link in raw_links]
+    return [l for l in clean_links if "vless://" in l]
 
 def extract_telegram_links(text):
     """Extracts telegram usernames/links from text."""

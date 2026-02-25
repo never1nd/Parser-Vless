@@ -28,56 +28,19 @@ async def ensure_xray_binary():
     system = platform.system().lower()
     is_linux = system != "windows"
 
-    # Critical fix: if we're on Linux but only have xray.exe, delete it and re-download
-    if is_linux and os.path.exists("xray.exe") and not os.path.exists("xray"):
-        logger.warning("Found xray.exe on Linux — this binary won't work! Deleting and downloading the Linux version...")
-        os.remove("xray.exe")
-
     if os.path.exists(XRAY_PATH):
-        logger.info(f"Xray binary found at: {XRAY_PATH}")
+        logger.info(f"✅ Xray binary found at: {XRAY_PATH}")
         if is_linux:
-            current_mode = os.stat(XRAY_PATH).st_mode
-            if not (current_mode & 0o111):
-                logger.warning(f"Xray binary at {XRAY_PATH} is NOT executable. Fixing permissions...")
+            try:
                 os.chmod(XRAY_PATH, 0o755)
+                logger.info("✅ Set execute permission on xray binary.")
+            except Exception as e:
+                logger.error(f"❌ Failed to set permissions: {e}")
         return
 
-    logger.info(f"{XRAY_PATH} not found. Attempting to download Xray-core for {system}...")
-
-    arch = "64"  # Assume 64-bit for servers
-    if system == "windows":
-        filename = f"Xray-windows-{arch}.zip"
-    else:
-        filename = f"Xray-linux-{arch}.zip"
-
-    url = XRAY_RELEASES + filename
-    logger.info(f"Downloading from: {url}")
-
-    try:
-        response = requests.get(url, stream=True, timeout=60)
-        response.raise_for_status()
-        with open(filename, "wb") as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-        logger.info(f"Download complete: {filename}")
-
-        with zipfile.ZipFile(filename, 'r') as zip_ref:
-            zip_ref.extractall(".")
-        logger.info("Extraction complete.")
-
-        if is_linux:
-            if os.path.exists("xray"):
-                os.chmod("xray", 0o755)
-                logger.info("Set execute permission on xray binary.")
-            else:
-                logger.error("xray binary not found after extraction!")
-
-        if os.path.exists(filename):
-            os.remove(filename)
-        logger.info(f"Xray-core ready at: {XRAY_PATH}")
-    except Exception as e:
-        logger.error(f"FATAL: Failed to download Xray-core from {url}: {e}")
-        logger.error("Verification stage will be skipped.")
+    logger.error(f"❌ FATAL: Xray binary NOT found at: {XRAY_PATH}")
+    logger.error("Please upload the Linux Xray binary and its support files (geoip.dat, geosite.dat, etc.)")
+    logger.error("The bot will continue but verification stage will FAIL.")
 
 # Initialize bot and dispatcher
 bot = Bot(token=BOT_TOKEN)
@@ -130,18 +93,22 @@ async def cmd_ping(message: Message):
     
     db = SessionLocal()
     try:
+        # Total count of reality keys
+        from sqlalchemy import func
+        total_reality = db.query(func.count(VlessKey.id)).filter(VlessKey.security == 'reality').scalar()
+        
         stmt = select(VlessKey).where(VlessKey.is_working == True).order_by(VlessKey.latency.asc()).limit(10)
         working = db.execute(stmt).scalars().all()
     finally:
         db.close()
         
     if working:
-        response = "✅ **Топ рабочих серверов:**\n\n"
+        response = f"✅ **Топ рабочих серверов (из {total_reality} в базе):**\n\n"
         for i, k in enumerate(working, 1):
             response += f"{i}. ⚡ {k.latency}ms\n`{k.raw_url}`\n\n"
         await message.answer(response, parse_mode="Markdown")
     else:
-        await message.answer("❌ Рабочих ключей не найдено. Попробуйте /parsing для поиска новых.")
+        await message.answer(f"❌ Рабочих ключей не найдено. Всего в базе {total_reality} Reality ключей.\nПопробуйте /parsing для поиска новых.")
 
 @dp.message(Command("parsing"))
 async def cmd_parsing(message: Message):
@@ -164,6 +131,19 @@ async def cmd_get(message: Message):
         await message.answer("Файл с рабочими ключами еще не создан. Запустите /parsing")
 
 async def main():
+    # 1. Handle DB migration if user uploaded a fresh one
+    import os
+    from config import DB_PATH
+    if os.path.exists("vless_parser_fromhost.db") and not os.path.exists(DB_PATH + ".migrated"):
+        logger.info("Found vless_parser_fromhost.db! Migration to vless_parser.db...")
+        try:
+            import shutil
+            shutil.copyfile("vless_parser_fromhost.db", DB_PATH)
+            # Mark as migrated
+            with open(DB_PATH + ".migrated", "w") as f: f.write("done")
+        except Exception as e:
+            logger.error(f"Migration error: {e}")
+
     # Ensure DB is initialized
     from database import init_db
     init_db()
@@ -176,9 +156,18 @@ async def main():
     scheduler.add_job(scheduled_task, 'interval', hours=6)
     scheduler.start()
     
-    # Pre-seed DB
+    # Pre-seed DB (with sources)
     discovery = DiscoveryModule()
-    await discovery.seed_initial_sources()
+    # Ensure sources are in DB
+    try:
+        from database import SessionLocal, Source
+        db = SessionLocal()
+        if not db.query(Source).filter_by(is_active=True).first():
+            logger.info("No active sources in DB. Seeding from config.py...")
+            await discovery.seed_initial_sources()
+        db.close()
+    except:
+        pass
     
     logger.info("Bot is starting...")
     await dp.start_polling(bot)

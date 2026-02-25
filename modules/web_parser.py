@@ -19,13 +19,16 @@ class WebParser(BaseScraper):
                 logger.info(f"Forum section detected! Found {len(topic_urls)} potential topics to crawl.")
                 
                 # Crawl each topic
-                for t_url in topic_urls:
+                for i, t_url in enumerate(topic_urls, 1):
+                    logger.info(f"  [{i}/{len(topic_urls)}] Crawling topic: {t_url}")
                     t_html = self.fetch(t_url)
                     if t_html:
                         keys, tg_links = self._extract_from_html(t_html)
                         all_keys.update(keys)
                         discovered_telegram.update(tg_links)
-                    self.sleep((2, 5))
+                        if keys:
+                            logger.info(f"    - Found {len(keys)} keys in topic")
+                    self.sleep((1, 3))
             else:
                 # Regular page parsing
                 keys, tg_links = self._extract_from_html(html)
@@ -59,23 +62,19 @@ class WebParser(BaseScraper):
     def _extract_from_html(self, html):
         """Extracts both Vless keys and Telegram links from HTML."""
         from utils.validator import extract_telegram_links
-        keys = extract_vless(html)
+        # 1. Fast regex on whole HTML first
+        all_keys = set(extract_vless(html))
+        tg_links = set(extract_telegram_links(html))
         
-        # Deep extraction from tags
-        soup = BeautifulSoup(html, 'html.parser')
-        tags_to_check = soup.find_all(['code', 'pre', 'a', 'div', 'span', 'p'])
+        # 2. If it looks like a forum or complex page, do a quick tag search
+        if len(html) > 5000:
+            soup = BeautifulSoup(html, 'html.parser')
+            # Only check tags likely to contain configs
+            for tag in soup.find_all(['code', 'pre', 'blockquote']):
+                text = tag.get_text()
+                all_keys.update(extract_vless(text))
         
-        tg_links = set()
-        for tag in tags_to_check:
-            text = tag.get_text()
-            keys.extend(extract_vless(text))
-            tg_links.update(extract_telegram_links(text))
-            
-            if tag.name == 'a' and tag.has_attr('href'):
-                keys.extend(extract_vless(tag['href']))
-                tg_links.update(extract_telegram_links(tag['href']))
-                
-        return set(keys), tg_links
+        return all_keys, tg_links
 
     def _save_discovered_telegram(self, usernames):
         """Saves discovered telegram usernames to the database as new free sources."""
