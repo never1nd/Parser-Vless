@@ -23,7 +23,7 @@ async def run_pipeline(channel_name, resources):
     
     # 2. Telegram (Now using web-scraping to support 24/7 headless mode)
     tg = TelegramParser()
-    tg_keys = await tg.parse_channels(resources.get('telegram', []))
+    tg_keys = await loop.run_in_executor(None, tg.parse_channels, resources.get('telegram', []))
     all_keys.update(tg_keys)
     
     # 3. Web

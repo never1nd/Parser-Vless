@@ -7,7 +7,7 @@ class TelegramParser(BaseScraper):
         super().__init__()
         # client arg kept for compatibility with old calls
 
-    async def parse_channels(self, channels, limit=50):
+    def parse_channels(self, channels, limit=50):
         """
         Scrapes public Telegram channels using their web view (t.me/s/username).
         Does NOT require API keys or authorization.
@@ -44,7 +44,3 @@ class TelegramParser(BaseScraper):
         
         return list(all_keys)
 
-    def run(self, channels, limit=50):
-        # Kept for compatibility, though everything is async now
-        import asyncio
-        return asyncio.run(self.parse_channels(channels, limit))

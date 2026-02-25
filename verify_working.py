@@ -1,7 +1,22 @@
+from concurrent.futures import ThreadPoolExecutor
 import os
-from config import OUTPUT_PREMIUM, OUTPUT_FREE, OUTPUT_WORKING, XRAY_PATH
+from config import OUTPUT_PREMIUM, OUTPUT_FREE, OUTPUT_WORKING, XRAY_PATH, SOCKS_PORT
 from utils.xray_handler import XrayTester
 from utils.scraper import logger
+
+def test_single_key(args):
+    key, port = args
+    tester = XrayTester()
+    # Temporarily override SOCKS_PORT for this test
+    import utils.xray_handler
+    original_port = utils.xray_handler.SOCKS_PORT
+    utils.xray_handler.SOCKS_PORT = port
+    
+    try:
+        success, info = tester.test_link(key)
+        return key if success else None
+    finally:
+        utils.xray_handler.SOCKS_PORT = original_port
 
 def verify_working():
     tester = XrayTester()
@@ -23,23 +38,26 @@ def verify_working():
                 all_keys.update([line.strip() for line in f if line.strip()])
 
     total = len(all_keys)
+    if total == 0:
+        logger.warning("No keys found for verification.")
+        return
+
     logger.info(f"Loaded {total} unique keys for testing...")
     
     working_keys = []
+    max_workers = 10
     
-    for i, key in enumerate(all_keys, 1):
-        # Using a simple progress indicator
-        print(f"Testing key {i}/{total}...", end="\r")
-        
-        success, info = tester.test_link(key)
-        if success:
-            logger.info(f"[WORKING] {info} | {key[:50]}...")
-            working_keys.append(key)
-        else:
-            # logger.debug(f"[FAILED] {info} | {key[:50]}...")
-            pass
+    # Create arguments for each worker: (key, unique_port)
+    # We use a range of ports starting from SOCKS_PORT
+    test_args = [(key, SOCKS_PORT + (i % max_workers)) for i, key in enumerate(all_keys)]
+    
+    logger.info(f"Starting parallel verification with {max_workers} workers...")
+    
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        results = list(executor.map(test_single_key, test_args))
+    
+    working_keys = [res for res in results if res]
 
-    print("\n")
     if working_keys:
         with open(OUTPUT_WORKING, "w", encoding="utf-8") as f:
             for key in working_keys:

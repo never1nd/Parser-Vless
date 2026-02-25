@@ -11,6 +11,16 @@ class DiscoveryModule(BaseScraper):
         super().__init__()
         self.github_api_url = "https://api.github.com/search/code"
         
+    def sync_discover_github(self):
+        """Sync version of discover_github_sources to be run in executor."""
+        import asyncio
+        loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.discover_github_sources())
+        finally:
+            loop.close()
+
     async def discover_github_sources(self):
         """
         Search GitHub for new files containing 'vless://'

@@ -79,14 +79,16 @@ async def scheduled_task():
     try:
         # Phase 1: Discovery (Continuous but here we trigger a burst)
         discovery = DiscoveryModule()
-        await discovery.discover_github_sources()
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, discovery.sync_discover_github)
         
         # Phase 2: Parsing
         await run_parsing_pipeline()
         
         # Phase 3: Filter & Verify
-        filter_keys()
-        verify_working()
+        # These are heavy sync tasks, run in executor
+        await loop.run_in_executor(None, filter_keys)
+        await loop.run_in_executor(None, verify_working)
         
         logger.info("Scheduled task completed successfully.")
     except Exception as e:

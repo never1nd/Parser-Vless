@@ -26,11 +26,10 @@ CHANNELS = {
             "https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/master/configs.txt",
             "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/Eternity",
             "https://raw.githubusercontent.com/vveg26/free-v2ray-configs/main/v2ray_sub.txt",
-            "https://raw.githubusercontent.com/Epodonios/v2ray-configs/raw/main/Splitted-By-Protocol/vless.txt",
+            "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt",
             "https://raw.githubusercontent.com/barry-far/V2ray-Config/main/Splitted-By-Protocol/vless.txt",
-            "https://raw.githubusercontent.com/nikita29a/FreeProxyList/main/vless.txt",
-            "https://raw.githubusercontent.com/LonUp/NodeList/main/V2RayCloud",
-            "https://raw.githubusercontent.com/awesome-vpn/awesome-vpn/master/vless.txt"
+            "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/vless.txt",
+            "https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/vless.txt"
         ],
         "telegram": [
             "supreme_vpns",
@@ -80,7 +79,10 @@ CHANNELS = {
             "VlessConfigs",
             "FreeV2rayConfig",
             "Vpn_Free_Config",
-            "Vless_Vmess_Trojan"
+            "Vless_Vmess_Trojan",
+            "sshs8com",
+            "VPNHackGroup",
+            "v2nodes"
         ],
         "web": [
             "https://v2nodes.com/",
