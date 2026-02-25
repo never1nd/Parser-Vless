@@ -55,6 +55,7 @@ async def run_pipeline(channel_name, resources):
 
 async def async_main():
     from database import SessionLocal, Source, init_db
+    from sqlalchemy import select
     
     # Ensure DB is initialized
     init_db()
