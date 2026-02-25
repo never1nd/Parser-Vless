@@ -26,8 +26,9 @@ CHANNELS = {
             "https://raw.githubusercontent.com/kort0881/vpn-vless-configs-russia/master/configs.txt",
             "https://raw.githubusercontent.com/mahdibland/V2RayAggregator/master/Eternity",
             "https://raw.githubusercontent.com/vveg26/free-v2ray-configs/main/v2ray_sub.txt",
-            "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/vless.txt",
-            "https://raw.githubusercontent.com/V2RayRoot/V2RayConfig/master/All_Configs_Sub.txt",
+            "https://raw.githubusercontent.com/Epodonios/v2ray-configs/raw/main/Splitted-By-Protocol/vless.txt",
+            "https://raw.githubusercontent.com/barry-far/V2ray-Config/main/Splitted-By-Protocol/vless.txt",
+            "https://raw.githubusercontent.com/nikita29a/FreeProxyList/main/vless.txt",
             "https://raw.githubusercontent.com/LonUp/NodeList/main/V2RayCloud",
             "https://raw.githubusercontent.com/awesome-vpn/awesome-vpn/master/vless.txt"
         ],
@@ -46,9 +47,11 @@ CHANNELS = {
         ],
         "web": [
             "https://www.reddit.com/r/v2ray/",
-            "https://safe-vpn.tech/vless-configs/",
             "https://vlesskey.com/",
-            "https://listvpn.net/free-vless-v2ray-servers"
+            "https://listvpn.net/free-vless-v2ray-servers",
+            "https://maintracker.org",
+            "https://rutracker.net",
+            "https://rutoro.info/"
         ]
     },
     "free": {
@@ -79,8 +82,6 @@ CHANNELS = {
         ],
         "web": [
             "https://v2nodes.com/",
-            "https://lncn.org/",
-            "https://free-v2ray.com/",
             "https://sshs8.com/vless",
             "https://vpnjantit.com/free-v2ray-vless",
             "https://vpnhack.com/vless-config"

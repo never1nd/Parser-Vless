@@ -52,19 +52,25 @@ class DiscoveryModule(BaseScraper):
             db.close()
 
     async def seed_initial_sources(self):
-        """Populate DB with sources from config.py if empty"""
+        """Sync DB with sources from config.py"""
         db = SessionLocal()
         try:
-            stmt = select(Source)
-            count = len(db.execute(stmt).scalars().all())
-            if count == 0:
-                logger.info("Seeding initial sources from config.py...")
-                for channel, types in CHANNELS.items():
-                    for s_type, urls in types.items():
-                        for url in urls:
+            logger.info("Syncing sources from config.py to database...")
+            for channel, types in CHANNELS.items():
+                for s_type, urls in types.items():
+                    for url in urls:
+                        # Check if exists
+                        stmt = select(Source).where(Source.url == url)
+                        result = db.execute(stmt).scalars().first()
+                        if not result:
                             new_src = Source(url=url, type=s_type, channel=channel)
                             db.add(new_src)
-                db.commit()
+                            logger.info(f"Added new source from config: {url}")
+                        else:
+                            # Re-activate if it was disabled
+                            result.is_active = True
+            db.commit()
+            logger.info("Database sync complete.")
         finally:
             db.close()
 
