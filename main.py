@@ -54,16 +54,39 @@ async def run_pipeline(channel_name, resources):
     logger.info(f"--- {channel_name.upper()} Pipeline Finished. Saved {len(valid_keys)} valid keys to {output_file} ---")
 
 async def async_main():
+    from database import SessionLocal, Source
+    from sqlalchemy import select
+    
     # 0. Authorize Telegram
     print("--- Telegram Authorization ---")
     await tg_client.start()
     
-    # Run pipelines in parallel using asyncio.gather
-    tasks = []
-    for channel_name, resources in CHANNELS.items():
-        tasks.append(run_pipeline(channel_name, resources))
+    # 1. Fetch sources from DB
+    db = SessionLocal()
+    try:
+        stmt = select(Source).where(Source.is_active == True)
+        sources = db.execute(stmt).scalars().all()
+    finally:
+        db.close()
         
-    await asyncio.gather(*tasks)
+    if not sources:
+        logger.warning("No sources found in database. Using config.py as fallback.")
+        tasks = []
+        for channel_name, resources in CHANNELS.items():
+            tasks.append(run_pipeline(channel_name, resources))
+        await asyncio.gather(*tasks)
+    else:
+        # Group by channel for pipeline
+        grouped_sources = {"premium": {"github": [], "telegram": [], "web": []}, 
+                           "free": {"github": [], "telegram": [], "web": []}}
+        for s in sources:
+            grouped_sources[s.channel][s.type].append(s.url)
+            
+        tasks = []
+        for channel_name, resources in grouped_sources.items():
+            tasks.append(run_pipeline(channel_name, resources))
+        await asyncio.gather(*tasks)
+        
     logger.info("All parsing tasks completed.")
 
 def main():

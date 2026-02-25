@@ -4,8 +4,15 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-API_ID = int(os.getenv("API_ID")) if os.getenv("API_ID") else None
+# Telegram API (User Account for Telethon)
+API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
+
+# Telegram Bot API (Managed by aiogram)
+BOT_TOKEN = "8354519184:AAEUeVUqBxtQvcLkEGe0fAVM19Hy_3XD-A0"
+
+# Database
+DB_PATH = "vless_parser.db"
 
 # Search Channels Configuration
 CHANNELS = {

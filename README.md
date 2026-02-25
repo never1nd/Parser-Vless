@@ -43,16 +43,29 @@ python filter_reality.py
 ```
 Результат: `vless-reality.txt`.
 
-### Этап 3: Глубокая проверка (Xray-core)
-Проверяет, действительно ли ключи работают и пропускают трафик.
-1. Скачайте `Xray-core` для Windows с [официального репозитория](https://github.com/XTLS/Xray-core/releases).
-2. Распакуйте и положите файл `xray.exe` в корень папки проекта.
-3. Запустите проверку:
+## Запуск 24/7 Бота
+
+Теперь проект превратился в полноценную автономную систему.
+
+1. Установите зависимости:
 ```bash
-python verify_working.py
+pip install sqlalchemy aiogram apscheduler aiohttp pysocks telethon python-dotenv beautifulsoup4 requests
 ```
-Результат: `working_vless.txt` (только 100% рабочие ключи с указанием задержки в логах).
+2. Убедитесь, что `xray.exe` в корне папки.
+3. Запустите бота:
+```bash
+python bot.py
+```
 
-## Безопасность
+### Возможности бота:
+- **Автоматика**: Каждые 6 часов бот сам парсит, фильтрует и проверяет ключи.
+- **Smart Discovery**: Бот постоянно ищет новые источники на GitHub.
+- **Команды**:
+    - `/parsing` — запустить цикл проверки вручную.
+    - `/get_working` — получить файл с работающими Reality ключами.
 
-Файлы `.env` и `*.session` добавлены в `.gitignore`, чтобы предотвратить утечку учетных данных.
+## Структура проекта
+- `bot.py` — Главный файл управления.
+- `database.py` — Работа с базой данных SQLite.
+- `modules/discovery.py` — Умный поиск новых источников.
+- `main.py`, `filter_reality.py`, `verify_working.py` — Ядро парсинга.
