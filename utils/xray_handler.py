@@ -128,11 +128,15 @@ class XrayTester:
 
     def test_link(self, vless_url):
         if not self.is_binary_present():
-            return False, "xray.exe missing"
+            logger.warning("Xray binary not found at path: %s", self.binary_path)
+            return False, "xray binary missing"
             
         data = parse_vless_url(vless_url)
         if not data:
             return False, "Invalid URL"
+        
+        short_url = vless_url[:60] + "..." if len(vless_url) > 60 else vless_url
+        logger.debug("Testing: %s @ %s:%s", data['address'], data['address'], data['port'])
             
         config = generate_xray_config(data, SOCKS_PORT)
         config_path = f"temp_config_{SOCKS_PORT}.json"
@@ -148,8 +152,8 @@ class XrayTester:
                 stderr=subprocess.DEVNULL
             )
             
-            # Wait for Xray to start
-            time.sleep(2)
+            # Wait for Xray to start (increased for reliability)
+            time.sleep(3)
             
             # Test connection via SOCKS5 proxy
             proxies = {
@@ -162,10 +166,13 @@ class XrayTester:
             latency = int((time.time() - start_time) * 1000)
             
             if response.status_code in [200, 204]:
+                logger.info("✅ WORKING: %s:%s (%dms)", data['address'], data['port'], latency)
                 return True, f"{latency}ms"
+            logger.debug("❌ Failed: %s:%s — HTTP %s", data['address'], data['port'], response.status_code)
             return False, f"Status {response.status_code}"
             
         except Exception as e:
+            logger.debug("❌ Error: %s:%s — %s", data['address'], data['port'], str(e))
             return False, str(e)
         finally:
             if self.process:

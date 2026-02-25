@@ -6,56 +6,69 @@ from aiogram.types import Message
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import BOT_TOKEN, OUTPUT_WORKING
 import os
+import platform
+import zipfile
+import requests
+
+# Logging MUST be set up before any function that uses logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Import our existing logic
 from parser_engine import async_main as run_parsing_pipeline
 from filter_reality import filter_keys
 from verify_working import verify_working
 from modules.discovery import DiscoveryModule
-import platform
-import zipfile
-import requests
 
 # URL for Xray-core releases
 XRAY_RELEASES = "https://github.com/XTLS/Xray-core/releases/latest/download/"
 
 async def ensure_xray_binary():
     from config import XRAY_PATH
+    system = platform.system().lower()
+    is_linux = system != "windows"
+
+    # Critical fix: if we're on Linux but only have xray.exe, delete it and re-download
+    if is_linux and os.path.exists("xray.exe") and not os.path.exists("xray"):
+        logger.warning("Found xray.exe on Linux — this binary won't work! Deleting and downloading the Linux version...")
+        os.remove("xray.exe")
+
     if os.path.exists(XRAY_PATH):
+        logger.info(f"Xray binary found at: {XRAY_PATH}")
         return
 
-    logger.info(f"{XRAY_PATH} not found. Attempting to download...")
-    
-    system = platform.system().lower()
-    arch = "64" # Assume 64-bit for servers
-    
+    logger.info(f"{XRAY_PATH} not found. Attempting to download Xray-core for {system}...")
+
+    arch = "64"  # Assume 64-bit for servers
     if system == "windows":
         filename = f"Xray-windows-{arch}.zip"
     else:
         filename = f"Xray-linux-{arch}.zip"
-        
+
     url = XRAY_RELEASES + filename
-    
+    logger.info(f"Downloading from: {url}")
+
     try:
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True, timeout=60)
+        response.raise_for_status()
         with open(filename, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
-        
+        logger.info(f"Download complete: {filename}")
+
         with zipfile.ZipFile(filename, 'r') as zip_ref:
             zip_ref.extractall(".")
-        
-        if system != "windows":
-            os.chmod("xray", 0o755)
-            
-        os.remove(filename)
-        logger.info("Xray-core downloaded and extracted successfully.")
-    except Exception as e:
-        logger.error(f"Failed to download Xray-core: {e}")
+        logger.info("Extraction complete.")
 
-# Logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+        if is_linux:
+            os.chmod("xray", 0o755)
+            logger.info("Set execute permission on xray binary.")
+
+        os.remove(filename)
+        logger.info(f"Xray-core ready at: {XRAY_PATH}")
+    except Exception as e:
+        logger.error(f"FATAL: Failed to download Xray-core from {url}: {e}")
+        logger.error("Verification stage will be skipped.")
 
 # Initialize bot and dispatcher
 bot = Bot(token=BOT_TOKEN)

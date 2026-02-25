@@ -5,3 +5,10 @@ __pycache__/
 !requirements.txt
 .vscode/
 .idea/
+# Xray binaries (downloaded automatically at startup)
+xray
+xray.exe
+*.zip
+# Geo data (large files, downloaded by Xray)
+geoip.dat
+geosite.dat

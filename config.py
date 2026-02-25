@@ -92,7 +92,7 @@ CHANNELS = {
 # XRAY_PATH defined above
 TEST_URL = "http://cp.cloudflare.com/generate_204"
 SOCKS_PORT = 10808
-VERIFICATION_TIMEOUT = 2
+VERIFICATION_TIMEOUT = 10
 
 # Output files
 OUTPUT_PREMIUM = "premium_vless.txt"
