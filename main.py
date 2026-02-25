@@ -7,13 +7,8 @@ from modules.web_parser import WebParser
 from utils.validator import validate_vless
 from utils.scraper import logger
 import asyncio
-from telethon import TelegramClient
-from config import API_ID, API_HASH
 from database import SessionLocal, Source, init_db
 from sqlalchemy import select
-
-# Global Telethon client to share across threads
-tg_client = TelegramClient('vless_parser_session', API_ID, API_HASH)
 
 async def run_pipeline(channel_name, resources):
     logger.info(f"--- Starting {channel_name.upper()} Pipeline ---")
@@ -23,32 +18,26 @@ async def run_pipeline(channel_name, resources):
     
     # 1. GitHub (Running sync code in executor)
     gh = GitHubParser()
-    gh_keys = await loop.run_in_executor(None, gh.parse_links, resources.get("github", []))
+    gh_keys = await loop.run_in_executor(None, gh.parse_resources, resources.get('github', []))
     all_keys.update(gh_keys)
     
-    # 2. Telegram
-    tg = TelegramParser(client=tg_client)
-    tg_keys = await tg.parse_channels(resources.get("telegram", []))
+    # 2. Telegram (Now using web-scraping to support 24/7 headless mode)
+    tg = TelegramParser()
+    tg_keys = await tg.parse_channels(resources.get('telegram', []))
     all_keys.update(tg_keys)
     
-    # 3. Web (Running sync code in executor)
+    # 3. Web
     web = WebParser()
-    web_keys = await loop.run_in_executor(None, web.parse_sites, resources.get("web", []))
+    web_keys = await loop.run_in_executor(None, web.parse_sites, resources.get('web', []))
     all_keys.update(web_keys)
     
-    # 4. Validation
+    # 4. Filter and Save
     valid_keys = []
-    logger.info(f"Total unique keys found for {channel_name}: {len(all_keys)}")
-    logger.info(f"Validating keys...")
     for key in all_keys:
         if validate_vless(key):
             valid_keys.append(key)
-    
-    # Remove any potential validation-stage dupes (though unlikely with set)
-    valid_keys = list(dict.fromkeys(valid_keys))
-    
-    # 5. Save results
-    output_file = OUTPUT_PREMIUM if channel_name == "premium" else OUTPUT_FREE
+            
+    output_file = resources.get('output', f"{channel_name}_vless.txt")
     with open(output_file, "w", encoding="utf-8") as f:
         for key in valid_keys:
             f.write(f"{key}\n")
@@ -58,11 +47,6 @@ async def run_pipeline(channel_name, resources):
 async def async_main():
     # Ensure DB is initialized
     init_db()
-    
-    # 0. Authorize Telegram
-    from config import BOT_TOKEN
-    print("--- Telegram Authorization (as Bot) ---")
-    await tg_client.start(bot_token=BOT_TOKEN)
     
     # 1. Fetch sources from DB
     db = SessionLocal()
@@ -87,6 +71,7 @@ async def async_main():
             
         tasks = []
         for channel_name, resources in grouped_sources.items():
+            resources['output'] = OUTPUT_PREMIUM if channel_name == "premium" else OUTPUT_FREE
             tasks.append(run_pipeline(channel_name, resources))
         await asyncio.gather(*tasks)
         
