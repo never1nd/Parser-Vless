@@ -113,6 +113,10 @@ async def cmd_get(message: Message):
         await message.answer("Файл с рабочими ключами еще не создан. Запустите /parsing")
 
 async def main():
+    # Ensure DB is initialized
+    from database import init_db
+    init_db()
+    
     # Ensure xray is present
     await ensure_xray_binary()
     

@@ -54,8 +54,10 @@ async def run_pipeline(channel_name, resources):
     logger.info(f"--- {channel_name.upper()} Pipeline Finished. Saved {len(valid_keys)} valid keys to {output_file} ---")
 
 async def async_main():
-    from database import SessionLocal, Source
-    from sqlalchemy import select
+    from database import SessionLocal, Source, init_db
+    
+    # Ensure DB is initialized
+    init_db()
     
     # 0. Authorize Telegram
     from config import BOT_TOKEN
