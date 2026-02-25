@@ -9,6 +9,8 @@ from utils.scraper import logger
 import asyncio
 from telethon import TelegramClient
 from config import API_ID, API_HASH
+from database import SessionLocal, Source, init_db
+from sqlalchemy import select
 
 # Global Telethon client to share across threads
 tg_client = TelegramClient('vless_parser_session', API_ID, API_HASH)
@@ -54,9 +56,6 @@ async def run_pipeline(channel_name, resources):
     logger.info(f"--- {channel_name.upper()} Pipeline Finished. Saved {len(valid_keys)} valid keys to {output_file} ---")
 
 async def async_main():
-    from database import SessionLocal, Source, init_db
-    from sqlalchemy import select
-    
     # Ensure DB is initialized
     init_db()
     
