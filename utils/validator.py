@@ -23,28 +23,13 @@ def extract_telegram_links(text):
 
 def validate_vless(vless_url):
     """
-    Simple validation: tries to resolve the host address to check if it's reachable.
-    Note: A full ping or xray connection check would be more robust but requires additional dependencies or OS calls.
+    Simple validation: checks structure. 
+    Socket check disabled as it's too slow for large lists.
+    Full verification is handled by the XrayTester stage.
     """
     try:
         parsed = urlparse(vless_url)
-        # Handle cases where the format might be vless://uuid@host:port...
-        netloc = parsed.netloc
-        if '@' in netloc:
-            host_port = netloc.split('@')[1]
-        else:
-            host_port = netloc
-
-        if ':' in host_port:
-            host = host_port.split(':')[0]
-            port = int(host_port.split(':')[1])
-        else:
-            host = host_port
-            port = 443 # Default SSL port
-
-        # Simple socket connection check to see if the port is open
-        with socket.create_connection((host, port), timeout=3):
-            return True
+        return parsed.scheme == "vless" and "@" in parsed.netloc
     except Exception:
         return False
 

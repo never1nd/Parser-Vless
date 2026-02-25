@@ -28,7 +28,7 @@ CHANNELS = {
             "https://raw.githubusercontent.com/vveg26/free-v2ray-configs/main/v2ray_sub.txt",
             "https://raw.githubusercontent.com/Epodonios/v2ray-configs/main/Splitted-By-Protocol/vless.txt",
             "https://raw.githubusercontent.com/barry-far/V2ray-Config/main/Splitted-By-Protocol/vless.txt",
-            "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/filtered/subs/vless.txt",
+            "https://raw.githubusercontent.com/MatinGhanbari/v2ray-configs/main/subscriptions/v2ray/sub1.txt",
             "https://raw.githubusercontent.com/hamedcode/port-based-v2ray-configs/main/vless.txt"
         ],
         "telegram": [

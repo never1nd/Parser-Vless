@@ -14,9 +14,37 @@ def test_single_key(args):
     
     try:
         success, info = tester.test_link(key)
-        return key if success else None
+        latency = None
+        if success and "ms" in info:
+            try:
+                latency = int(info.replace("ms", ""))
+            except:
+                pass
+        return {"key": key, "success": success, "latency": latency}
     finally:
         utils.xray_handler.SOCKS_PORT = original_port
+
+def update_db_results(results):
+    """Updates the database with verification results."""
+    from database import SessionLocal, VlessKey
+    from sqlalchemy import update
+    from datetime import datetime
+    
+    db = SessionLocal()
+    try:
+        for res in results:
+            stmt = update(VlessKey).where(VlessKey.raw_url == res["key"]).values(
+                is_working=res["success"],
+                latency=res["latency"],
+                last_check=datetime.utcnow()
+            )
+            db.execute(stmt)
+        db.commit()
+    except Exception as e:
+        logger.error(f"Error updating DB results: {e}")
+        db.rollback()
+    finally:
+        db.close()
 
 def verify_working():
     tester = XrayTester()
@@ -56,13 +84,17 @@ def verify_working():
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         results = list(executor.map(test_single_key, test_args))
     
-    working_keys = [res for res in results if res]
+    # 2. Update Database with ALL results
+    update_db_results(results)
+    
+    # 3. Filter working keys for the .txt export
+    working_keys = [res["key"] for res in results if res["success"]]
 
     if working_keys:
         with open(OUTPUT_WORKING, "w", encoding="utf-8") as f:
             for key in working_keys:
                 f.write(f"{key}\n")
-        logger.info(f"Verification finished! Saved {len(working_keys)} WORKING keys to {OUTPUT_WORKING}")
+        logger.info(f"Verification finished! Saved {len(working_keys)} WORKING keys to DB and {OUTPUT_WORKING}")
     else:
         logger.warning("No working keys found after full verification.")
 
