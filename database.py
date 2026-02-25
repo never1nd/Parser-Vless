@@ -29,6 +29,7 @@ class VlessKey(Base):
 
 def init_db():
     import os
+    global engine, SessionLocal
     try:
         Base.metadata.create_all(bind=engine)
     except Exception as e:
@@ -39,7 +40,6 @@ def init_db():
                 import shutil
                 shutil.move(DB_PATH, DB_PATH + ".corrupt")
             # Recreate engine and try once more
-            global engine, SessionLocal
             from sqlalchemy import create_engine
             engine = create_engine(f"sqlite:///{DB_PATH}", echo=False)
             SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
