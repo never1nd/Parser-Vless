@@ -165,11 +165,11 @@ class XrayTester:
             if response.status_code in [200, 204]:
                 logger.info("✅ WORKING: %s:%s (%dms)", data['address'], data['port'], latency)
                 return True, f"{latency}ms"
-            logger.debug("❌ Failed: %s:%s — HTTP %s", data['address'], data['port'], response.status_code)
+            logger.warning("❌ Failed: %s:%s — HTTP %s", data['address'], data['port'], response.status_code)
             return False, f"Status {response.status_code}"
             
         except Exception as e:
-            logger.debug("❌ Error: %s:%s — %s", data['address'], data['port'], str(e))
+            logger.warning("❌ Error: %s:%s — %s", data['address'], data['port'], str(e))
             return False, str(e)
         finally:
             if process:

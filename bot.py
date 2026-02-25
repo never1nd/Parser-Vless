@@ -35,6 +35,11 @@ async def ensure_xray_binary():
 
     if os.path.exists(XRAY_PATH):
         logger.info(f"Xray binary found at: {XRAY_PATH}")
+        if is_linux:
+            current_mode = os.stat(XRAY_PATH).st_mode
+            if not (current_mode & 0o111):
+                logger.warning(f"Xray binary at {XRAY_PATH} is NOT executable. Fixing permissions...")
+                os.chmod(XRAY_PATH, 0o755)
         return
 
     logger.info(f"{XRAY_PATH} not found. Attempting to download Xray-core for {system}...")
@@ -61,10 +66,14 @@ async def ensure_xray_binary():
         logger.info("Extraction complete.")
 
         if is_linux:
-            os.chmod("xray", 0o755)
-            logger.info("Set execute permission on xray binary.")
+            if os.path.exists("xray"):
+                os.chmod("xray", 0o755)
+                logger.info("Set execute permission on xray binary.")
+            else:
+                logger.error("xray binary not found after extraction!")
 
-        os.remove(filename)
+        if os.path.exists(filename):
+            os.remove(filename)
         logger.info(f"Xray-core ready at: {XRAY_PATH}")
     except Exception as e:
         logger.error(f"FATAL: Failed to download Xray-core from {url}: {e}")
