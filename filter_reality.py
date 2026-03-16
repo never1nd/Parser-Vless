@@ -1,6 +1,7 @@
 import os
 from config import OUTPUT_PREMIUM, OUTPUT_FREE, OUTPUT_REALITY
 from utils.validator import is_reality
+from config import REALITY_ALLOWED_PORTS
 from utils.scraper import logger
 from urllib.parse import urlparse, parse_qs
 
@@ -9,7 +10,7 @@ def is_strict_reality(key: str) -> bool:
     """
     Returns True if key is a Reality key AND meets strict criteria:
     - security=reality
-    - port=443
+    - port in REALITY_ALLOWED_PORTS
     - flow=xtls-rprx-vision
     """
     if not is_reality(key):
@@ -20,10 +21,10 @@ def is_strict_reality(key: str) -> bool:
         netloc = parsed.netloc
         if ':' in netloc:
             port = int(netloc.split(':')[-1])
-            if port != 443:
+            if port not in REALITY_ALLOWED_PORTS:
                 return False
         else:
-            return False  # No port = not 443
+            return False  # No port = not allowed
         # Check flow param
         params = parse_qs(parsed.query)
         flow = params.get('flow', [''])[0]

@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from utils.scraper import logger
 from utils.validator import is_reality
+from config import REALITY_ALLOWED_PORTS
 from utils.xray_handler import parse_vless_url
 from config import PREFILTER_MAX_RATIO, PREFILTER_MAX_AGE_HOURS
 
@@ -46,7 +47,7 @@ def prefilter_keys(keys, key_meta=None, max_ratio=None, max_age_hours=None):
 
         # Reality strict rules
         if is_reality(key):
-            if data.get("port") != 443:
+            if data.get("port") not in REALITY_ALLOWED_PORTS:
                 continue
             flow = data.get("params", {}).get("flow", "")
             if flow != "xtls-rprx-vision":

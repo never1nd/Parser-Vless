@@ -144,3 +144,10 @@ RANDOM_SLEEP = (5, 10)
 # Prefilter settings
 PREFILTER_MAX_RATIO = float(os.getenv("PREFILTER_MAX_RATIO", "0.3"))
 PREFILTER_MAX_AGE_HOURS = int(os.getenv("PREFILTER_MAX_AGE_HOURS", "48"))
+
+# Reality ports allowed for filtering
+REALITY_ALLOWED_PORTS = [
+    int(p.strip())
+    for p in os.getenv("REALITY_ALLOWED_PORTS", "443,8443,9443,1080").split(",")
+    if p.strip().isdigit()
+]

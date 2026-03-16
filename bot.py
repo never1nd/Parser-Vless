@@ -164,14 +164,19 @@ async def cmd_parsing(message: Message):
     ]
 
     sent_any = False
+    empty_groups = []
     for path, caption in files:
-        if os.path.exists(path):
+        if os.path.exists(path) and os.path.getsize(path) > 0:
             file = types.FSInputFile(path)
             await message.answer_document(file, caption=caption)
             sent_any = True
+        else:
+            empty_groups.append(caption)
 
     if not sent_any:
         await message.answer("No subscription files created: no working keys.")
+    elif empty_groups:
+        await message.answer("Empty groups: " + ", ".join(empty_groups))
 
     urls = _subscription_urls()
     if urls:
