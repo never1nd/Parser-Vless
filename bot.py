@@ -4,7 +4,16 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from aiogram.types import Message
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from config import BOT_TOKEN, OUTPUT_WORKING
+from config import (
+    BOT_TOKEN,
+    OUTPUT_GROUP1,
+    OUTPUT_GROUP2,
+    OUTPUT_GROUP3,
+    OUTPUT_GROUP4,
+    SUBS_BASE_URL,
+    SUBS_SECRET,
+    ENABLE_DISCOVERY,
+)
 import os
 import platform
 import zipfile
@@ -19,6 +28,8 @@ from parser_engine import async_main as run_parsing_pipeline
 from filter_reality import filter_keys
 from verify_working import verify_working
 from modules.discovery import DiscoveryModule
+from scheduler.recheck_worker import recheck_working_groups
+from utils.status_store import load_status
 
 # URL for Xray-core releases
 XRAY_RELEASES = "https://github.com/XTLS/Xray-core/releases/latest/download/"
@@ -75,48 +86,26 @@ async def ensure_xray_binary():
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-@dp.message(Command("xray"))
-async def cmd_xray(message: Message):
-    from config import XRAY_PATH
-    import subprocess
-    
-    if not os.path.exists(XRAY_PATH):
-        await message.answer(f"❌ Xray НЕ найден по пути: `{XRAY_PATH}`\nБот скачает его при следующем запуске.", parse_mode="Markdown")
-        return
-    
-    # Check permissions
-    mode = oct(os.stat(XRAY_PATH).st_mode)[-3:]
-    
-    # Try running xray version
-    try:
-        result = subprocess.run(
-            [XRAY_PATH, "version"],
-            capture_output=True, text=True, timeout=5
-        )
-        version_out = (result.stdout or result.stderr).strip().split('\n')[0]
-        await message.answer(
-            f"✅ Xray найден и работает!\n"
-            f"📁 Путь: `{os.path.abspath(XRAY_PATH)}`\n"
-            f"🔐 Права: `{mode}`\n"
-            f"ℹ️ Версия: `{version_out}`",
-            parse_mode="Markdown"
-        )
-    except Exception as e:
-        await message.answer(
-            f"⚠️ Xray найден, но не запускается!\n"
-            f"📁 Путь: `{os.path.abspath(XRAY_PATH)}`\n"
-            f"🔐 Права: `{mode}`\n"
-            f"❌ Ошибка: `{e}`",
-            parse_mode="Markdown"
-        )
+def _subscription_urls():
+    if not SUBS_BASE_URL:
+        return {}
+    base = f"{SUBS_BASE_URL}/subs/{SUBS_SECRET}"
+    return {
+        1: f"{base}/group1.txt",
+        2: f"{base}/group2.txt",
+        3: f"{base}/group3.txt",
+        4: f"{base}/group4.txt",
+    }
 
 async def scheduled_task():
     logger.info("Starting scheduled 6-hour task...")
     try:
-        # Phase 1: Discovery (Continuous but here we trigger a burst)
-        discovery = DiscoveryModule()
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, discovery.sync_discover_github)
+
+        # Phase 1: Optional discovery
+        if ENABLE_DISCOVERY:
+            discovery = DiscoveryModule()
+            await loop.run_in_executor(None, discovery.sync_discover_github)
         
         # Phase 2: Parsing
         await run_parsing_pipeline()
@@ -133,66 +122,107 @@ async def scheduled_task():
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
-        "👋 Привет! Я Vless Parser Bot.\n\n"
-        "Я работаю 24/7:\n"
-        "🔍 Ищу новые источники\n"
-        "🧹 Удаляю дубликаты\n"
-        "⚡ Проверяю ключи на скорость\n\n"
-        "Команды:\n"
-        "/parsing - Запустить полный цикл проверки прямо сейчас\n"
-        "/ping - Проверить задержку существующих Reality ключей\n"
-        "/get_working - Получить файл с рабочими Reality ключами"
+        "Hi! I am Vless Parser Bot.\n\n"
+        "Commands:\n"
+        "/parsing - run full parsing and verification\n"
+        "/ping - show group stats and last recheck\n"
+        "/status - show bot status and sources\n"
     )
+
 
 @dp.message(Command("ping"))
 async def cmd_ping(message: Message):
-    await message.answer("⚡ Проверяю текущие Reality ключи на задержку...")
-    
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, verify_working)
-    
-    # Fetch top 10 working keys from DB
-    from database import SessionLocal, VlessKey
-    from sqlalchemy import select
-    
-    db = SessionLocal()
-    try:
-        # Total count of reality keys
-        from sqlalchemy import func
-        total_reality = db.query(func.count(VlessKey.id)).filter(VlessKey.security == 'reality').scalar()
-        
-        stmt = select(VlessKey).where(VlessKey.is_working == True).order_by(VlessKey.latency.asc()).limit(10)
-        working = db.execute(stmt).scalars().all()
-    finally:
-        db.close()
-        
-    if working:
-        response = f"✅ **Топ рабочих серверов (из {total_reality} в базе):**\n\n"
-        for i, k in enumerate(working, 1):
-            response += f"{i}. ⚡ {k.latency}ms\n`{k.raw_url}`\n\n"
-        await message.answer(response, parse_mode="Markdown")
-    else:
-        await message.answer(f"❌ Рабочих ключей не найдено. Всего в базе {total_reality} Reality ключей.\nПопробуйте /parsing для поиска новых.")
+    status = load_status()
+    counts = status.get("group_counts", {})
+    last_recheck = status.get("last_recheck", "-")
+    removed = status.get("recheck_removed", "-")
+    remaining = status.get("recheck_remaining", "-")
+
+    response = (
+        "Group stats:\n"
+        f"1 (full access): {counts.get('group1', 0)}\n"
+        f"2 (AI): {counts.get('group2', 0)}\n"
+        f"3 (Google AI): {counts.get('group3', 0)}\n"
+        f"4 (YouTube/Discord): {counts.get('group4', 0)}\n\n"
+        f"Last recheck: {last_recheck}\n"
+        f"Removed: {removed}\n"
+        f"Remaining: {remaining}"
+    )
+    await message.answer(response)
+
 
 @dp.message(Command("parsing"))
 async def cmd_parsing(message: Message):
-    await message.answer("🚀 Запускаю полный цикл парсинга и проверки. Это может занять несколько минут...")
+    await message.answer("Running full parsing and verification. This may take a few minutes...")
     await scheduled_task()
-    
-    if os.path.exists(OUTPUT_WORKING):
-        await message.answer("✅ Парсинг завершен!")
-        file = types.FSInputFile(OUTPUT_WORKING)
-        await message.answer_document(file, caption="Актуальный список рабочих ключей.")
-    else:
-        await message.answer("❌ К сожалению, рабочих ключей не найдено.")
 
-@dp.message(Command("get_working"))
-async def cmd_get(message: Message):
-    if os.path.exists(OUTPUT_WORKING):
-        file = types.FSInputFile(OUTPUT_WORKING)
-        await message.answer_document(file, caption="Список проверенных Reality ключей.")
+    files = [
+        (OUTPUT_GROUP1, "Group 1 - full access"),
+        (OUTPUT_GROUP2, "Group 2 - AI"),
+        (OUTPUT_GROUP3, "Group 3 - Google AI"),
+        (OUTPUT_GROUP4, "Group 4 - YouTube/Discord"),
+    ]
+
+    sent_any = False
+    for path, caption in files:
+        if os.path.exists(path):
+            file = types.FSInputFile(path)
+            await message.answer_document(file, caption=caption)
+            sent_any = True
+
+    if not sent_any:
+        await message.answer("No subscription files created: no working keys.")
+
+    urls = _subscription_urls()
+    if urls:
+        url_text = (
+            "Subscription URLs:\n"
+            f"1: {urls[1]}\n"
+            f"2: {urls[2]}\n"
+            f"3: {urls[3]}\n"
+            f"4: {urls[4]}"
+        )
+        await message.answer(url_text)
     else:
-        await message.answer("Файл с рабочими ключами еще не создан. Запустите /parsing")
+        await message.answer("Subscription URLs are not configured (SUBS_BASE_URL is empty).")
+
+
+@dp.message(Command("status"))
+async def cmd_status(message: Message):
+    status = load_status()
+    counts = status.get("group_counts", {})
+    last_verify = status.get("last_verify", "-")
+    last_recheck = status.get("last_recheck", "-")
+
+    # Sources summary
+    sources_text = "-"
+    try:
+        from database import SessionLocal, Source
+        from sqlalchemy import select
+        db = SessionLocal()
+        try:
+            rows = db.execute(select(Source).where(Source.is_active == True)).scalars().all()
+            if rows:
+                sources_text = "\n".join(sorted({s.url for s in rows}))
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+    response = (
+        "Bot status:\n"
+        f"Last verify: {last_verify}\n"
+        f"Last recheck: {last_recheck}\n\n"
+        "Groups:\n"
+        f"1: {counts.get('group1', 0)}\n"
+        f"2: {counts.get('group2', 0)}\n"
+        f"3: {counts.get('group3', 0)}\n"
+        f"4: {counts.get('group4', 0)}\n\n"
+        "Active sources:\n"
+        f"{sources_text}"
+    )
+    await message.answer(response)
+
 
 async def main():
     # 1. Handle DB migration if user uploaded a fresh one
@@ -218,6 +248,7 @@ async def main():
     # Setup Scheduler
     scheduler = AsyncIOScheduler()
     scheduler.add_job(scheduled_task, 'interval', hours=6)
+    scheduler.add_job(recheck_working_groups, 'interval', hours=1)
     scheduler.start()
     
     # Pre-seed DB (with sources)

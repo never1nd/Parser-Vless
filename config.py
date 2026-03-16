@@ -14,6 +14,20 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 # Database
 DB_PATH = "vless_parser.db"
 
+# Subscription (public URLs) + FTP upload
+SUBS_BASE_URL = os.getenv("SUBS_BASE_URL", "").rstrip("/")
+SUBS_SECRET = os.getenv("SUBS_SECRET", "change_me")
+FTP_HOST = os.getenv("FTP_HOST")
+FTP_USER = os.getenv("FTP_USER")
+FTP_PASS = os.getenv("FTP_PASS")
+FTP_PORT = int(os.getenv("FTP_PORT", "21"))
+FTP_DIR = os.getenv("FTP_DIR", f"/htdocs/subs/{SUBS_SECRET}")
+ENABLE_FTP_UPLOAD = os.getenv("ENABLE_FTP_UPLOAD", "1") == "1"
+
+# Feature toggles
+ENABLE_DISCOVERY = os.getenv("ENABLE_DISCOVERY", "0") == "1"
+ENABLE_AUTO_TG_DISCOVERY = os.getenv("ENABLE_AUTO_TG_DISCOVERY", "0") == "1"
+
 # Xray Verification Settings
 import sys
 XRAY_PATH = "./xray" if sys.platform != "win32" else "xray.exe"
@@ -89,7 +103,11 @@ CHANNELS = {
             "https://v2nodes.com/",
             "https://sshs8.com/vless",
             "https://vpnjantit.com/free-v2ray-vless",
-            "https://vpnhack.com/vless-config"
+            "https://vpnhack.com/vless-config",
+            "https://lolz.live",
+            "https://ntc.party",
+            "https://nodeseek.com",
+            "https://v2ex.com"
         ]
     }
 }
@@ -105,6 +123,10 @@ OUTPUT_PREMIUM = "premium_vless.txt"
 OUTPUT_FREE = "free_vless.txt"
 OUTPUT_REALITY = "vless-reality.txt"
 OUTPUT_WORKING = "working_vless.txt"
+OUTPUT_GROUP1 = "working_group1.txt"
+OUTPUT_GROUP2 = "working_group2.txt"
+OUTPUT_GROUP3 = "working_group3.txt"
+OUTPUT_GROUP4 = "working_group4.txt"
 
 # Scraper Settings
 VERIFY_SSL = False # Change to True if you fix the local SSL issue
@@ -118,3 +140,7 @@ USER_AGENTS = [
 
 TIMEOUT = 10
 RANDOM_SLEEP = (5, 10)
+
+# Prefilter settings
+PREFILTER_MAX_RATIO = float(os.getenv("PREFILTER_MAX_RATIO", "0.3"))
+PREFILTER_MAX_AGE_HOURS = int(os.getenv("PREFILTER_MAX_AGE_HOURS", "48"))

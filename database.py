@@ -24,6 +24,7 @@ class VlessKey(Base):
     security = Column(String) # reality, tls, none
     is_working = Column(Boolean, default=False)
     latency = Column(Integer) # ms
+    key_group = Column(Integer, default=0) # 1=all, 2=ai, 3=google_ai, 4=social
     last_check = Column(DateTime, default=datetime.utcnow)
     discovery_date = Column(DateTime, default=datetime.utcnow)
 

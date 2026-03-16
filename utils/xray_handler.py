@@ -183,3 +183,73 @@ class XrayTester:
                     os.remove(config_path)
                 except:
                     pass
+
+    def test_link_multi_site(self, vless_url, port=SOCKS_PORT):
+        """
+        Tests a Vless link against multiple sites.
+        Returns a dict: { site_name: True/False }
+        Sites: youtube, discord, gemini, ai_studio, chatgpt, claude
+        """
+        SITES = {
+            "youtube":   "https://www.youtube.com/generate_204",
+            "discord":   "https://discord.com/favicon.ico",
+            "gemini":    "https://gemini.google.com/favicon.ico",
+            "ai_studio": "https://aistudio.google.com/favicon.ico",
+            "chatgpt":   "https://chat.openai.com/favicon.ico",
+            "claude":    "https://claude.ai/favicon.ico",
+        }
+
+        if not self.is_binary_present():
+            logger.warning("Xray binary not found at path: %s", self.binary_path)
+            return {k: False for k in SITES}
+
+        data = parse_vless_url(vless_url)
+        if not data:
+            return {k: False for k in SITES}
+
+        config = generate_xray_config(data, port)
+        config_path = f"temp_config_{port}.json"
+
+        with open(config_path, "w") as f:
+            json.dump(config, f)
+
+        process = None
+        results = {k: False for k in SITES}
+        try:
+            process = subprocess.Popen(
+                [self.binary_path, "run", "-c", config_path],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+            time.sleep(2)
+
+            proxies = {
+                "http":  f"socks5h://127.0.0.1:{port}",
+                "https": f"socks5h://127.0.0.1:{port}",
+            }
+
+            for name, url in SITES.items():
+                try:
+                    resp = requests.get(url, proxies=proxies, timeout=VERIFICATION_TIMEOUT, allow_redirects=True)
+                    results[name] = resp.status_code < 500
+                except Exception:
+                    results[name] = False
+
+            passing = [k for k, v in results.items() if v]
+            logger.info("MultiSite %s:%s → %s", data['address'], data['port'], passing or "none")
+        except Exception as e:
+            logger.warning("MultiSite Error: %s:%s — %s", data.get('address','?'), data.get('port','?'), e)
+        finally:
+            if process:
+                process.terminate()
+                try:
+                    process.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+            if os.path.exists(config_path):
+                try:
+                    os.remove(config_path)
+                except:
+                    pass
+
+        return results

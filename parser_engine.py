@@ -43,17 +43,31 @@ async def run_pipeline(channel_name, resources):
         if validate_vless(key):
             valid_keys.append(key)
             
+    # Deduplicate by UUID to reduce noise
+    from utils.xray_handler import parse_vless_url
+    uuid_seen = set()
+    dedup_keys = []
+    for key in valid_keys:
+        data = parse_vless_url(key)
+        if not data:
+            continue
+        uuid = data.get("uuid")
+        if not uuid or uuid in uuid_seen:
+            continue
+        uuid_seen.add(uuid)
+        dedup_keys.append(key)
+
     # Save to Database first (Primary storage)
     from database import save_vless_keys_bulk
-    await loop.run_in_executor(None, save_vless_keys_bulk, valid_keys)
+    await loop.run_in_executor(None, save_vless_keys_bulk, dedup_keys)
     
     # Save to Text File (Secondary storage/export)
     output_file = resources.get('output', f"{channel_name}_vless.txt")
     with open(output_file, "w", encoding="utf-8") as f:
-        for key in valid_keys:
+        for key in dedup_keys:
             f.write(f"{key}\n")
             
-    logger.info(f"--- {channel_name.upper()} Pipeline Finished. Saved {len(valid_keys)} keys to DB and {output_file} ---")
+    logger.info(f"--- {channel_name.upper()} Pipeline Finished. Saved {len(dedup_keys)} keys to DB and {output_file} ---")
 
 async def async_main():
     # Ensure DB is initialized

@@ -3,6 +3,7 @@ __pycache__/
 *.session
 *.txt
 !requirements.txt
+status.json
 .vscode/
 .idea/
 # Xray binaries (downloaded automatically at startup)

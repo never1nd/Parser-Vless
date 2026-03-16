@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 from utils.scraper import BaseScraper, logger
 from utils.validator import extract_vless
+from config import ENABLE_AUTO_TG_DISCOVERY
 
 class WebParser(BaseScraper):
     def parse_sites(self, urls):
@@ -40,7 +41,7 @@ class WebParser(BaseScraper):
         # If new telegram sources were discovered, we might want to pass them back
         # However, for now, we'll log them and they'll be processed by discovery module
         # if we modify the pipeline to handle them.
-        if discovered_telegram:
+        if discovered_telegram and ENABLE_AUTO_TG_DISCOVERY:
             logger.info(f"Discovered {len(discovered_telegram)} potential new Telegram sources from web: {discovered_telegram}")
             self._save_discovered_telegram(discovered_telegram)
 

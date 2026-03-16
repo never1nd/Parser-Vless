@@ -14,8 +14,12 @@ class TelegramParser(BaseScraper):
         """
         all_keys = set()
         for channel in channels:
-            # Normalize channel name
-            username = channel.strip().replace("@", "")
+            # Normalize channel name or URL
+            raw = channel.strip()
+            if raw.startswith("http"):
+                username = raw.rstrip("/").split("/")[-1].replace("@", "")
+            else:
+                username = raw.replace("@", "")
             url = f"https://t.me/s/{username}"
             logger.info(f"Scraping Telegram web view: {url}")
             
