@@ -1,14 +1,16 @@
 
 import threading
-from config import CHANNELS, OUTPUT_PREMIUM, OUTPUT_FREE
+from config import CHANNELS, OUTPUT_PREMIUM, OUTPUT_FREE, EXTRA_FEEDS_ENABLED, EXTRA_FEEDS_URLS
 from modules.github_parser import GitHubParser
 from modules.telegram_parser import TelegramParser
 from modules.web_parser import WebParser
-from utils.validator import validate_vless
+from utils.validator import validate_vless, extract_vless
 from utils.scraper import logger
 import asyncio
 from database import SessionLocal, Source, init_db
 from sqlalchemy import select
+import base64
+from utils.scraper import BaseScraper
 
 async def run_pipeline(channel_name, resources):
     logger.info(f"--- Starting {channel_name.upper()} Pipeline ---")
@@ -36,6 +38,20 @@ async def run_pipeline(channel_name, resources):
     web_keys = await loop.run_in_executor(None, web.parse_sites, resources.get('web', []))
     all_keys.update(web_keys)
     logger.info(f"Web phase found {len(web_keys)} keys")
+
+    # 3b. External feeds (optional)
+    if EXTRA_FEEDS_ENABLED and EXTRA_FEEDS_URLS:
+        ext = BaseScraper()
+        ext_keys_total = 0
+        for url in EXTRA_FEEDS_URLS:
+            logger.info(f"Parsing external feed: {url}")
+            text = ext.fetch(url)
+            if not text or text == "404_NOT_FOUND":
+                continue
+            keys = _extract_from_feed(text)
+            ext_keys_total += len(keys)
+            all_keys.update(keys)
+        logger.info(f"External feeds found {ext_keys_total} keys")
     
     # 4. Filter and Save
     valid_keys = []
@@ -68,6 +84,18 @@ async def run_pipeline(channel_name, resources):
             f.write(f"{key}\n")
             
     logger.info(f"--- {channel_name.upper()} Pipeline Finished. Saved {len(dedup_keys)} keys to DB and {output_file} ---")
+
+def _extract_from_feed(text: str):
+    """Extracts VLESS links from plain text or base64-encoded subscriptions."""
+    keys = extract_vless(text)
+    if keys:
+        return keys
+    # Try base64 decode if no keys found
+    try:
+        decoded = base64.b64decode(text).decode("utf-8", errors="ignore")
+        return extract_vless(decoded)
+    except Exception:
+        return []
 
 async def async_main():
     # Ensure DB is initialized

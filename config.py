@@ -28,6 +28,14 @@ ENABLE_FTP_UPLOAD = os.getenv("ENABLE_FTP_UPLOAD", "1") == "1"
 ENABLE_DISCOVERY = os.getenv("ENABLE_DISCOVERY", "0") == "1"
 ENABLE_AUTO_TG_DISCOVERY = os.getenv("ENABLE_AUTO_TG_DISCOVERY", "0") == "1"
 
+# External feeds (plain text or base64 subscriptions)
+EXTRA_FEEDS_ENABLED = os.getenv("EXTRA_FEEDS_ENABLED", "0") == "1"
+EXTRA_FEEDS_URLS = [
+    u.strip()
+    for u in os.getenv("EXTRA_FEEDS_URLS", "").split(",")
+    if u.strip()
+]
+
 # Xray Verification Settings
 import sys
 XRAY_PATH = "./xray" if sys.platform != "win32" else "xray.exe"

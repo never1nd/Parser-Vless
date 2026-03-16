@@ -47,4 +47,16 @@ https://your-domain.tld/subs/<secret>/group3.txt
 https://your-domain.tld/subs/<secret>/group4.txt
 ```
 
+## 5) External feed (optional)
+
+If you run the Playwright worker on another machine, upload its output
+to the same folder (default `extra_feed.txt`) and enable it in `.env`:
+
+```
+EXTRA_FEEDS_ENABLED=1
+EXTRA_FEEDS_URLS=https://your-domain.tld/subs/<secret>/extra_feed.txt
+```
+
+The main bot will pull this feed during parsing.
+
 If upload fails, create the folder manually and try again.
